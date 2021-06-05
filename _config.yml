@@ -75,7 +75,7 @@ author:
 #      url: "https://instagram.com/"
     - label: "Email"
       icon: "fas fa-fw fa-envelope-square"
-      url: "lyk1652@gmail.com"
+      url: "mailto:lyk1652@gmail.com"
 
 footer:
   links:
