@@ -78,3 +78,80 @@ test是镜像的名字，可以自定义，后面跟版本号
 
 ## 总结
 使用docker很方便，当有用户想要使用server资源，可以开放容器，甚至开放ssh以及root权限，而不会影响宿主机的安全，做到了资源共享数据隔离。
+
+
+------------------
+2021/08/14更新
+上面的脚本有些问题，下面是最新的
+
+整个构建的时间比较长，请耐心等待
+
+sudo bash build.sh
+```bash
+#!/bin/bash
+
+mkdir Dockerfile
+cd Dockerfile
+
+touch run.sh Dockerfile Conda.sh
+echo "#!/bin/bash
+/usr/sbin/sshd -D
+" >> run.sh
+
+echo "#!/bin/bash
+wget https://repo.anaconda.com/archive/Anaconda3-2021.05-Linux-x86_64.sh
+
+bash Anaconda3-2021.05-Linux-x86_64.sh -b -p /opt/conda
+
+ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh
+
+" >> Conda.sh
+
+echo "FROM ubuntu:20.04
+
+MAINTAINER \"YuanKun Liu [D20091100124@cityu.mo]\"
+
+RUN echo \"root:xqrlyk133\" | chpasswd
+
+RUN apt update && apt install -y \
+openssh-server \
+vim \
+wget
+
+RUN rm -rf /var/lib/apt/lists/*
+
+RUN echo \"PermitRootLogin yes\" >> /etc/ssh/sshd_config
+
+RUN mkdir /var/run/sshd
+RUN mkdir /root/.ssh
+ADD run.sh /run.sh
+RUN chmod 755 /run.sh
+#RUN /etc/init.d/ssh restart
+#RUN service ssh restart
+EXPOSE 22
+#RUN echo \"service ssh restart\" >> /root/.bashrc
+
+RUN mkdir /workspace
+WORKDIR /workspace
+
+ADD Conda.sh /workspace/Conda.sh
+RUN chmod 755 /workspace/Conda.sh
+RUN bash /workspace/Conda.sh
+
+CMD [\"/run.sh\"]
+" >> Dockerfile
+
+sudo docker build -f Dockerfile -t testimg:v1.0 .
+sudo docker run -p 8890:22 --privileged=true -itd --name testimg1 testimg:v1.0
+```
+
+sudo bash clear.sh
+```bash
+#!/bin/bash
+
+sudo docker stop testimg1
+sudo docker rm testimg1
+sudo docker rmi testimg:v1.0
+sudo rm -rf Dockerfile
+
+```
