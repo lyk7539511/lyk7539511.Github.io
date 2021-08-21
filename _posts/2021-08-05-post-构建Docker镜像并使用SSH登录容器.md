@@ -155,3 +155,119 @@ sudo docker rmi testimg:v1.0
 sudo rm -rf Dockerfile
 
 ```
+
+---------------
+2021/08/21更新
+
+本次更新将Anaconda更换为Miniconda，原因是使用Anaconda构建时间过长并且构建完成后的镜像过于庞大，达到了惊人的7G多，之前没有注意这个问题，更换为Miniconda后，镜像大小只有700MB左右，远小于使用Anaconda构建的镜像，并且由于Anaconda的软件包默认全部安装在base环境中，我们一般不推荐使用base环境而是另外重新创建新环境使用，所以由Anaconda切换到Miniconda不会造成任何影响，只是需要自行判断哪些软件包需要安装并手动安装；无需担心依赖问题，conda以及pip可以很轻松的解决。
+
+默认开放8888端口，以保证后期jupyter的安装需求，对应docker对外暴露的端口为10188，可以自行在脚本中修改；或者开放其他端口，这里不再赘述。如果安装jupyter，请注意修改jupyter的配置文件以及配置密码，否则无法远程访问jupyter！！！
+
+```bash
+#!/bin/bash
+
+# make a new DIR to save the Dockerfile and other script files
+mkdir Dockerfile
+cd Dockerfile
+
+# create new script files
+touch run.sh Dockerfile_mini Conda.sh motd
+
+# open sshd server
+echo "#!/bin/bash
+
+/usr/sbin/sshd -D
+" >> run.sh
+
+# install conda pytorch jupyter
+echo "#!/bin/bash
+
+wget https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-py39_4.10.3-Linux-x86_64.sh
+bash Miniconda3-py39_4.10.3-Linux-x86_64.sh -b -p $HOME/miniconda
+~/miniconda/bin/conda init $(echo $SHELL | awk -F '/' '{print $NF}')
+source /etc/profile
+# Pytorch & Jupyterlab
+#conda activate base
+#conda create -y -n pytorch_cpu python=3.8
+#conda activate pytorch_cpu
+#conda install -y pytorch torchvision torchaudio cpuonly -c pytorch-lts
+#conda install -y -c conda-forge jupyterlab
+
+" >> Conda.sh
+
+# set ssh banner
+echo "
+/**
+ * ┌───┐   ┌───┬───┬───┬───┐ ┌───┬───┬───┬───┐ ┌───┬───┬───┬───┐ ┌───┬───┬───┐
+ * │Esc│   │ F1│ F2│ F3│ F4│ │ F5│ F6│ F7│ F8│ │ F9│F10│F11│F12│ │P/S│S L│P/B│  ┌┐    ┌┐    ┌┐
+ * └───┘   └───┴───┴───┴───┘ └───┴───┴───┴───┘ └───┴───┴───┴───┘ └───┴───┴───┘  └┘    └┘    └┘
+ * ┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───────┐ ┌───┬───┬───┐ ┌───┬───┬───┬───┐
+ * │~ \`│! 1│@ 2│# 3│$ 4│% 5│^ 6│& 7│* 8│( 9│) 0│_ -│+ =│ BacSp │ │Ins│Hom│PUp│ │N L│ / │ * │ - │
+ * ├───┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─────┤ ├───┼───┼───┤ ├───┼───┼───┼───┤
+ * │ Tab │ Q │ W │ E │ R │ T │ Y │ U │ I │ O │ P │{ [│} ]│ | \\ │ │Del│End│PDn│ │ 7 │ 8 │ 9 │   │
+ * ├─────┴┬──┴┬──┴┬──┴┬──┴┬──┴┬──┴┬──┴┬──┴┬──┴┬──┴┬──┴┬──┴─────┤ └───┴───┴───┘ ├───┼───┼───┤ + │
+ * │ Caps │ A │ S │ D │ F │ G │ H │ J │ K │ L │: ;│\" \'│ Enter  │               │ 4 │ 5 │ 6 │   │
+ * ├──────┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴─┬─┴────────┤     ┌───┐     ├───┼───┼───┼───┤
+ * │ Shift  │ Z │ X │ C │ V │ B │ N │ M │< ,│> .│? /│  Shift   │     │ ↑ │     │ 1 │ 2 │ 3 │   │
+ * ├─────┬──┴─┬─┴──┬┴───┴───┴───┴───┴───┴──┬┴───┼───┴┬────┬────┤ ┌───┼───┼───┐ ├───┴───┼───┤ E││
+ * │ Ctrl│ Win│ Alt│         Space         │ Alt│ Win│ Fn │Ctrl│ │ ← │ ↓ │ → │ │   0   │ . │←─┘│
+ * └─────┴────┴────┴───────────────────────┴────┴────┴────┴────┘ └───┴───┴───┘ └───────┴───┴───┘
+ */
+ --------------------------------------------------------------
+ Welcome!
+ This is a docker container build by a postgraduate student from City University of Macau.
+
+" >> motd
+
+# build a docker image using Dockerfile
+# based on Ubuntu 20.04 LTS
+# install some basic software such as openssh-server,vim and wget
+# del cache about apt
+# run sshd server
+# change DIR to save script file on docker
+# install conda
+# ssh
+echo "FROM ubuntu:20.04
+
+MAINTAINER \"YuanKun Liu [D20091100124@cityu.mo]\"
+
+RUN echo \"root:root\" | chpasswd
+
+RUN apt update && apt install -y \
+openssh-server \
+vim \
+wget
+
+RUN rm -rf /var/lib/apt/lists/*
+
+RUN echo \"PermitRootLogin yes\" >> /etc/ssh/sshd_config
+
+RUN mkdir /var/run/sshd
+RUN mkdir /root/.ssh
+ADD run.sh /run.sh
+RUN chmod 755 /run.sh
+#RUN /etc/init.d/ssh restart
+#RUN service ssh restart
+EXPOSE 22
+#EXPOSE 8888
+#RUN echo \"service ssh restart\" >> /root/.bashrc
+
+RUN mkdir /workspace
+WORKDIR /workspace
+
+ADD Conda.sh /workspace/Conda.sh
+RUN chmod 755 /workspace/Conda.sh
+RUN bash /workspace/Conda.sh
+
+ADD motd /workspace/motd
+RUN cp /workspace/motd /etc/motd
+
+CMD [\"/run.sh\"]
+" >> Dockerfile_mini
+
+# build docker image
+sudo docker build -f Dockerfile_mini -t miniconda:v1.0 .
+
+# run docker container, open ports
+sudo docker run -p 10122:22 -p 10188:8888 --privileged=true -itd --name miniconda_10122 miniconda:v1.0
+```
