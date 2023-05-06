@@ -116,6 +116,9 @@ emotion                  /home/ubuntu/miniconda3/envs/emotion
 至此，所有内容都已准备完成
 
 # 4、测试
+
+要记得修改InferText.py中的url地址，这个url是使用 [https://github.com/cookeem/chatgpt-service](https://github.com/cookeem/chatgpt-service) 搭建的openai服务，参考这个仓库的教程搭建好服务，修改ip地址即可。
+
 ```bash
 (base) ubuntu@VM-0-12-ubuntu:~$ conda activate emotion
 (emotion) ubuntu@VM-0-12-ubuntu:~$ cd speechbrain/
