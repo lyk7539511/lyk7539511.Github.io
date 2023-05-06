@@ -1,5 +1,5 @@
 ---
-title: "一键配置docker"
+title: "利用speechbrain和openai分别实现语音和文字的情绪识别"
 categories:
   - Blog
   - Tech
